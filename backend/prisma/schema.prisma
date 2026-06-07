@@ -63,7 +63,8 @@ model Balance{
   userId Int 
   user User @relation(fields:[userId],references:[id])
   asset String
-  available Int 
-  locked Int 
+  available Decimal 
+  locked Decimal 
+  @@unique([userId, asset])
 
 }
