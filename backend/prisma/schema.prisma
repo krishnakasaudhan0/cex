@@ -11,3 +11,59 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+
+model User{
+  id Int @id @default(autoincrement())
+  username String @unique
+  password String
+  createdAt DateTime @default(now())
+  orders Order[]
+  balances Balance[]
+  
+}
+model Stock {
+  id Int @id @default(autoincrement())
+  symbol String @unique
+  title String
+
+  orders Order[] 
+}
+
+enum OrderSide{
+  BUY
+  SELL
+}
+enum OrderStatus{
+  OPEN
+FILLED
+   CANCELLED
+PARTIALLY_FILLED
+}
+
+
+model Order{
+  user User @relation(fields:[userId],references:[id])
+  id Int @id @default(autoincrement())
+  userId Int 
+  stockId Int 
+  stock Stock @relation(fields:[stockId],references:[id])
+
+  side OrderSide
+  status OrderStatus @default(OPEN)
+  price Int 
+  quantity Int 
+  filledQuantity Int @default(0)
+  createdAt DateTime @default(now())
+
+}
+
+model Balance{
+  id Int @id @default(autoincrement())
+  userId Int 
+  user User @relation(fields:[userId],references:[id])
+  asset String
+  available Int 
+  locked Int 
+
+}
