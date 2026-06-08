@@ -122,35 +122,57 @@ app.get("/balance", authenticateToken, async (req: Request, res: Response) => {
   }
 });
 
-
 app.post("/deposit", authenticateToken, async (req: Request, res: Response) => {
+  const { asset, amount } = req.body;
 
-  //user also give me the assest name 
-  const { amount,asset } = req.body;
-
-  if (typeof amount !== "number" || amount <= 0) {
-    return res.status(400).json({ message: "Invalid deposit amount" });
+  if (!asset || typeof amount !== "number" || amount <= 0) {
+    return res.status(400).json({ message: "Invalid input" });
   }
 
   try {
-    const user = await prisma.user.findUnique({ where: { id: req.userId } });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const newBalance = user.balance + amount;
-    await prisma.user.update({
-      where: { id: req.userId },
-      data: { balance: newBalance },
+    const existingBalance = await prisma.balance.findFirst({
+      where: {
+        userId: req.userId,
+        asset,
+      },
     });
 
-    res.json({ message: "Deposit successful", newBalance });
+    if (!existingBalance) {
+      const balance = await prisma.balance.create({
+        data: {
+          userId: req.userId!,
+          asset,
+          available: amount,
+          locked: 0,
+        },
+      });
+
+      return res.json({
+        message: "Deposit successful",
+        balance,
+      });
+    }
+
+    const balance = await prisma.balance.update({
+      where: {
+        id: existingBalance.id,
+      },
+      data: {
+        available: {
+          increment: amount,
+        },
+      },
+    });
+
+    res.json({
+      message: "Deposit successful",
+      balance,
+    });
   } catch (error) {
-    console.error("Error processing deposit:", error);
+    console.error("Deposit error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
-
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
