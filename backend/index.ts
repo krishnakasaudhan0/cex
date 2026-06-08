@@ -107,6 +107,50 @@ const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
 app.get("/api/protected", authenticateToken, (req: Request, res: Response) => {
   res.json({ message: "This is a protected route", userId: req.userId });
 }); 
+app.get("/balance", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const balances = await prisma.balance.findMany({
+      where: {
+        userId: req.userId,
+      },
+    });
+
+    res.json({ balances });
+  } catch (error) {
+    console.error("Error fetching balances:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+app.post("/deposit", authenticateToken, async (req: Request, res: Response) => {
+
+  //user also give me the assest name 
+  const { amount,asset } = req.body;
+
+  if (typeof amount !== "number" || amount <= 0) {
+    return res.status(400).json({ message: "Invalid deposit amount" });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const newBalance = user.balance + amount;
+    await prisma.user.update({
+      where: { id: req.userId },
+      data: { balance: newBalance },
+    });
+
+    res.json({ message: "Deposit successful", newBalance });
+  } catch (error) {
+    console.error("Error processing deposit:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
