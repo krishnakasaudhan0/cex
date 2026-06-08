@@ -174,6 +174,54 @@ app.post("/deposit", authenticateToken, async (req: Request, res: Response) => {
   }
 });
 
+app.post("/withdraw", authenticateToken, async (req: Request, res: Response) => {
+  const { asset, amount } = req.body;
+
+  if (!asset || typeof amount !== "number" || amount <= 0) {
+    return res.status(400).json({ message: "Invalid input" });
+  }
+
+  try {
+    const balance = await prisma.balance.findFirst({
+      where: {
+        userId: req.userId,
+        asset,
+      },
+    });
+
+    if (!balance) {
+      return res.status(404).json({
+        message: "Balance not found",
+      });
+    }
+
+    if (Number(balance.available) < amount) {
+      return res.status(400).json({
+        message: "Insufficient balance",
+      });
+    }
+
+    const updatedBalance = await prisma.balance.update({
+      where: {
+        id: balance.id,
+      },
+      data: {
+        available: {
+          decrement: amount,
+        },
+      },
+    });
+
+    res.json({
+      message: "Withdrawal successful",
+      balance: updatedBalance,
+    });
+  } catch (error) {
+    console.error("Withdrawal error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
